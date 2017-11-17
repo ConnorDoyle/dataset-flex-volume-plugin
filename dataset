@@ -1,0 +1,174 @@
+#! /usr/bin/env python
+
+"""dataset
+
+Usage:
+  dataset init
+  dataset attach <options> <node-name>
+  dataset detach <mount-device> <node-name>
+  dataset waitforattach <mount-device> <options>
+  dataset isattached <options> <node-name>
+  dataset mountdevice <mount-dir> <options>
+  dataset unmountdevice <mount-device>
+  dataset mount <mount-dir> <options>
+  dataset unmount <mount-dir>
+"""
+from docopt import docopt
+
+import datetime
+import json
+import subprocess
+import sys
+
+LOG_FILE = '/var/log/dataset/plugin.log'
+
+def main(args):
+  args = docopt(__doc__, version='dataset 1.0.0')
+  # log("raw arguments:\n" + json.dumps(args))
+
+  result = None
+
+  # Parse options as JSON.
+  if args['<options>']:
+    args['<options>'] = json.loads(args['<options>'])
+
+  # Dispatch subcommand handlers.
+  if args['init']:
+    result = init()
+  elif args['attach']:
+    result = attach(args['<options>'], args['<node-name>'])
+  elif args['detach']:
+    result = detach(args['<mount-device>'], args['<node-name>'])
+  elif args['waitforattach']:
+    result = waitforattach(args['<mount-device>'], args['<options>'])
+  elif args['isattached']:
+    result = isattached(args['<options>'], args['<node-name>'])
+  elif args['mountdevice']:
+    result = mountdevice(args['<mount-dir>'], args['<options>'])
+  elif args['unmountdevice']:
+    result = unmountdevice(args['<mount-device>'])
+  elif args['mount']:
+    result = mount(args['<mount-dir>'], args['<options>'])
+  elif args['unmount']:
+    result = unmount(args['<mount-dir>'])
+  else:
+    result = unsupported()
+
+  raw_result = json.dumps(result)
+  log("result:  " + raw_result)
+
+  print(raw_result)
+
+def init():
+  with open(LOG_FILE, 'w') as f:
+    f.write('')
+  log('command: init')
+  log('args:    ' + json.dumps({}))
+  return {
+    'status': 'Success',
+    'message': 'Initialized',
+    'capabilities': { 'attach': False }
+  }
+
+def attach(options, node_name):
+  log('command: attach')
+  log('args:    ' + json.dumps({
+    'options': options,
+    'nodeName': node_name
+  }))
+  return {
+    'status': 'Success',
+    'message': '...',
+    'device': '/tmp/dataset',
+    'attached': True
+  }
+
+def detach(mount_device, node_name):
+  log('command: detach')
+  log('args:    ' + json.dumps({
+    'mountDevice': mount_device,
+    'nodeName': node_name
+  }))
+  return {
+    'status': 'Success'
+  }
+
+
+def waitforattach(mount_device, options):
+  log('command: waitforattach')
+  log('args:    ' + json.dumps({
+    'mountDevice': mount_device,
+    'options': options
+  }))
+  return {
+    'status': 'Success',
+    'message': '...',
+    'device': '/tmp/dataset',
+    'attached': True
+  }
+
+def isattached(options, node_name):
+  log('command: isattached')
+  log('args:    ' + json.dumps({
+    'options': options,
+    'nodeName': node_name
+  }))
+  return {
+    'status': 'Success',
+    'attached': True
+  }
+
+def mountdevice(mount_dir, options):
+  log('command: mountdevice')
+  log('args:    ' + json.dumps({
+    'mountDir': mount_dir,
+    'options': options
+  }))
+  return {
+    'status': 'Success'
+  }
+
+def unmountdevice(mount_device):
+  log('command: unmountdevice')
+  log('args:    ' + json.dumps({
+    'mountDevice': mount_device
+  }))
+  return {
+    'status': 'Success'
+  }
+
+def mount(mount_dir, options):
+  log('command: mount')
+  log('args:    ' + json.dumps({
+    'mountDir': mount_dir,
+    'options': options
+  }))
+  # TODO: Download or use cache and replace this hardcoded
+  #       host path.
+  ret = subprocess.call(["mount", "--bind", "/tmp/dataset", mount_dir])
+  if ret is not 0:
+    return { 'status': 'Error' }
+  return { 'status': 'Success' }
+
+def unmount(mount_dir):
+  log('command: unmount')
+  log('args:    ' + json.dumps({
+    'mountDir': mount_dir
+  }))
+  # TODO: Unmount!
+  return {
+    'status': 'Success'
+  }
+
+def unsupported():
+  return {
+    "status": 'Not Supported'
+  }
+
+def log(msg):
+    now = str(datetime.datetime.utcnow())
+    with open(LOG_FILE, 'a+') as f:
+      f.write('[' + now + '] ' + str(msg) + "\n")
+
+if __name__ == '__main__':
+  main(sys.argv)
